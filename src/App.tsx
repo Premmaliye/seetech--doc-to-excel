@@ -26,7 +26,6 @@ import {
   Camera,
   Maximize
 } from "lucide-react";
-import * as XLSX from "xlsx";
 import { PDFDocument } from "pdf-lib";
 import { cn, fileToBase64 } from "./lib/utils";
 import { DOCUMENT_FORMATS, FormatDefinition } from "./formats";

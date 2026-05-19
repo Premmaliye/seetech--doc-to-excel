@@ -1,25 +1,25 @@
-import XLSX from "xlsx";
+import ExcelJS from "exceljs";
 
-export function generateExcel(data: any[]) {
+export async function generateExcel(data: any[]) {
+    const workbook = new ExcelJS.Workbook();
+    const ws = workbook.addWorksheet("Results");
 
-    const worksheet =
-        XLSX.utils.json_to_sheet(data);
+    if (data.length === 0) {
+        await workbook.xlsx.writeFile("output.xlsx");
+        console.log("Excel file generated (empty)");
+        return;
+    }
 
-    const workbook =
-        XLSX.utils.book_new();
+    const headers = Object.keys(data[0]);
+    ws.addRow(headers);
 
-    XLSX.utils.book_append_sheet(
-        workbook,
-        worksheet,
-        "Results"
-    );
+    for (const row of data) {
+        const rowArr = headers.map(h => (row[h] !== undefined && row[h] !== null) ? row[h] : "");
+        ws.addRow(rowArr);
+    }
 
-    XLSX.writeFile(
-        workbook,
-        "output.xlsx"
-    );
+    ws.columns.forEach(col => { col.width = 20; });
 
-    console.log(
-        "Excel file generated"
-    );
+    await workbook.xlsx.writeFile("output.xlsx");
+    console.log("Excel file generated");
 }
