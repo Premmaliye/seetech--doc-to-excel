@@ -36,6 +36,7 @@ RUN apt-get update && apt-get install -y \
 # Copy python dependencies and set up virtual environment
 COPY python/requirements.txt ./python/
 RUN python3 -m venv /app/venv && \
+    /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /app/venv/bin/pip install --no-cache-dir -r python/requirements.txt
 
 # Configure environment path to use the Python virtual environment automatically
