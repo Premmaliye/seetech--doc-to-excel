@@ -12,7 +12,7 @@
 
 import fs from "fs";
 import path from "path";
-import { processAllPages } from "../extractors/extractorRouter.ts";
+import { processAllPages } from "../extractors/extractorRouter";
 
 /** Try to convert PDF to images using Python/PyMuPDF. Returns null if Python unavailable. */
 async function tryPdfToImagesViaPython(

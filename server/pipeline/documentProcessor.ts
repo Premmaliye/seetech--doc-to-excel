@@ -1,5 +1,5 @@
-import { performGeminiExtraction } from "../services/geminiExtractor.ts";
-import { extractWithOpenRouter } from "../services/openRouterVision.ts";
+import { performGeminiExtraction } from "../services/geminiExtractor";
+import { extractWithOpenRouter } from "../services/openRouterVision";
 
 // ─────────────────────────────────────────────
 // MAIN DOCUMENT PROCESSOR

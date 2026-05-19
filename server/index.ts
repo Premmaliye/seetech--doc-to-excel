@@ -5,9 +5,9 @@ import dotenv from "dotenv";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
-import { generateAIResponse } from "./services/aiService.ts";
-import { performOCR } from "./services/ocrService.ts";
-import { processDocument } from "./pipeline/documentProcessor.ts";
+import { generateAIResponse } from "./services/aiService";
+import { performOCR } from "./services/ocrService";
+import { processDocument } from "./pipeline/documentProcessor";
 import { createServer as createViteServer } from "vite";
 
 dotenv.config();
