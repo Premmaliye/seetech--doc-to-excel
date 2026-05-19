@@ -1,0 +1,50 @@
+# Dependencies
+node_modules/
+
+# Build output
+build/
+dist/
+coverage/
+
+# Python virtual environments — NEVER commit these (contain huge binaries)
+ocrenv/
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+
+# Python folder (local dev only — requirements.txt moved here to avoid Vercel Python detection)
+# python/ is intentionally NOT ignored so requirements.txt stays in repo for reference
+
+# Uploads and temp files
+uploads/
+scratch/
+_pdf_pages_*/
+*.tmp
+temp_page_*.png
+bottom_*.png
+
+# OCR model data (large binary)
+*.traineddata
+
+# Logs
+*.log
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment — keep example, never commit real keys
+.env*
+!.env.example
+
+# Vite cache
+node_modules/.vite_server/
+node_modules/.vite-temp/
+
+# Server cache
+server/cache/

@@ -1,0 +1,23 @@
+# Ignore backend Express server and configuration
+server/
+server.js
+tsconfig.server.json
+railway.json
+Procfile
+
+# Ignore Python directories, environments, and scripts
+python/
+.venv/
+ocrenv/
+*.py
+*.traineddata
+
+# Ignore local outputs, uploads, and temp files
+uploads/
+output.xlsx
+temp_*.png
+bottom_*.png
+top_*.png
+sample.pdf
+benchmarkPdfs/
+scratch/

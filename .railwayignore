@@ -1,0 +1,10 @@
+node_modules/
+.venv/
+ocrenv/
+dist/
+uploads/
+*.xlsx
+*.png
+*.pdf
+benchmarkPdfs/
+scratch/

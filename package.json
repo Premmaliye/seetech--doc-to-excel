@@ -1,0 +1,58 @@
+{
+  "name": "react-example",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "tsx --watch --watch-path server/index.ts --watch-path server/services --watch-path server/pipeline --watch-path server/detectors --watch-path server/extractors server/index.ts",
+    "start": "tsx server/index.ts",
+    "build": "vite build",
+    "build:server": "tsc -p tsconfig.server.json",
+    "build:all": "npm run build",
+    "preview": "vite preview",
+    "clean": "rm -rf dist",
+    "lint": "tsc --noEmit",
+    "kill-port": "powershell -Command \"Get-NetTCPConnection -LocalPort 3000,24679 -State Listen -ErrorAction SilentlyContinue | ForEach-Object { Stop-Process -Id $_.OwningProcess -Force -ErrorAction SilentlyContinue }; Write-Host 'Ports 3000 and 24679 cleared'\""
+  },
+  "dependencies": {
+    "@tailwindcss/vite": "^4.1.14",
+    "@vitejs/plugin-react": "^5.0.4",
+    "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
+    "exceljs": "^4.4.0",
+    "express": "^4.22.2",
+    "file-saver": "^2.0.5",
+    "lucide-react": "^0.546.0",
+    "mime-types": "^3.0.2",
+    "motion": "^12.23.24",
+    "multer": "^2.1.1",
+    "pdf-lib": "^1.17.1",
+    "pdf-parse": "^2.4.5",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "string-similarity": "^4.0.4",
+    "tailwind-merge": "^3.5.0",
+    "vite": "^6.2.0",
+    "xlsx": "^0.18.5",
+    "zod": "^4.4.3"
+  },
+  "devDependencies": {
+    "@types/cors": "^2.8.19",
+    "@types/express": "^4.17.25",
+    "@types/formidable": "^3.5.1",
+    "@types/node": "^22.19.18",
+    "@vercel/node": "^5.8.2",
+    "autoprefixer": "^10.4.21",
+    "axios": "^1.16.1",
+    "cors": "^2.8.6",
+    "formidable": "^3.5.4",
+    "tailwindcss": "^4.1.14",
+    "tesseract.js": "^7.0.0",
+    "tsx": "^4.21.0",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0"
+  }
+}

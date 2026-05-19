@@ -1,0 +1,9 @@
+{
+    "sample.pdf": {
+        "expected": {
+            "voltage": "440",
+            "current": "15",
+            "machine": "Machine Motor X1"
+        }
+    }
+}
