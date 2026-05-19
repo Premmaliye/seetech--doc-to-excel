@@ -25,17 +25,16 @@ FROM node:20-slim AS runner
 
 WORKDIR /app
 
-# Install system dependencies (Python 3, Pip, VirtualEnv, and PDF conversion libraries)
+# Install system dependencies (Python 3.11, Pip, VirtualEnv, and PDF conversion libraries)
 RUN apt-get update && apt-get install -y \
-    python3 \
-    python3-pip \
-    python3-venv \
+    python3.11 \
+    python3.11-venv \
     poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy python dependencies and set up virtual environment
 COPY python/requirements.txt ./python/
-RUN python3 -m venv /app/venv && \
+RUN python3.11 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
     /app/venv/bin/pip install --no-cache-dir -r python/requirements.txt
 
