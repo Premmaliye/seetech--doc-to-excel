@@ -12,11 +12,11 @@
  */
 
 import axios from "axios";
-import { detectDocumentFormat, FormatId } from "../detectors/formatDetector";
-import { FORMAT_A_PROMPT, FORMAT_A_HEADERS } from "./formatAExtractor";
-import { FORMAT_B_PROMPT, FORMAT_B_HEADERS } from "./formatBExtractor";
-import { FORMAT_C_PROMPT, FORMAT_C_HEADERS } from "./formatCExtractor";
-import { FORMAT_D_PROMPT, FORMAT_D_HEADERS } from "./formatDExtractor";
+import { detectDocumentFormat, FormatId } from "../detectors/formatDetector.js";
+import { FORMAT_A_PROMPT, FORMAT_A_HEADERS } from "./formatAExtractor.js";
+import { FORMAT_B_PROMPT, FORMAT_B_HEADERS } from "./formatBExtractor.js";
+import { FORMAT_C_PROMPT, FORMAT_C_HEADERS } from "./formatCExtractor.js";
+import { FORMAT_D_PROMPT, FORMAT_D_HEADERS } from "./formatDExtractor.js";
 
 const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
 

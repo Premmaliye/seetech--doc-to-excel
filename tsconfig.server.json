@@ -1,14 +1,14 @@
 {
   "extends": "./tsconfig.json",
   "compilerOptions": {
-    "module": "CommonJS",
+    "module": "NodeNext",
     "target": "ES2022",
     "outDir": "dist/server",
     "rootDir": "server",
     "esModuleInterop": true,
     "lib": ["ESNext"],
     "types": ["node"],
-    "moduleResolution": "node",
+    "moduleResolution": "NodeNext",
     "skipLibCheck": true,
     "noEmit": false,
     "allowImportingTsExtensions": false
