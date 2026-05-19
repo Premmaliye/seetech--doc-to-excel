@@ -33,10 +33,10 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy python dependencies and set up virtual environment
-COPY python/requirements.txt ./python/
+COPY python/runtime-requirements.txt ./python/
 RUN python3.11 -m venv /app/venv && \
     /app/venv/bin/pip install --no-cache-dir --upgrade pip setuptools wheel && \
-    /app/venv/bin/pip install --no-cache-dir -r python/requirements.txt
+    /app/venv/bin/pip install --no-cache-dir -r python/runtime-requirements.txt
 
 # Configure environment path to use the Python virtual environment automatically
 ENV PATH="/app/venv/bin:$PATH"
