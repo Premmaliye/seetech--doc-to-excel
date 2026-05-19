@@ -11,7 +11,7 @@
     "start": "tsx server/index.ts",
     "build": "vite build",
     "build:server": "tsc -p tsconfig.server.json",
-    "build:all": "npm run build",
+    "build:all": "npm run build && npm run build:server",
     "preview": "vite preview",
     "clean": "rm -rf dist",
     "lint": "tsc --noEmit",
