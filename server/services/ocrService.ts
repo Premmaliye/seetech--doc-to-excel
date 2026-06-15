@@ -15,6 +15,51 @@ function getFileHash(filePath: string) {
     return crypto.createHash("md5").update(fs.readFileSync(filePath)).digest("hex");
 }
 
+function getPythonCommand(): string {
+  const venvPython = path.join(process.cwd(), ".venv", "Scripts", "python.exe");
+  if (fs.existsSync(venvPython)) {
+    return `"${venvPython}"`;
+  }
+  return "python";
+}
+
+async function extractPdfTextFallback(filePath: string): Promise<any[]> {
+  try {
+    const { PDFParse } = await import("pdf-parse") as any;
+    const buffer = fs.readFileSync(filePath);
+    const pdfParser = new PDFParse(new Uint8Array(buffer)) as any;
+    await pdfParser.load();
+    const result = await pdfParser.getText();
+
+    // pdf-parse v2 returns { pages: [{ text, num }], text: "full text" }
+    const pages: any[] = result?.pages || [];
+    if (pages.length === 0) {
+      return [];
+    }
+
+    const pagesData: any[] = [];
+    for (const page of pages) {
+      const pageText = (page.text || "").trim();
+      if (!pageText) continue;
+
+      const lines = pageText.split(/\r?\n/).map((line: string) => line.trim()).filter(Boolean).map((text: string, index: number) => ({
+        text,
+        confidence: 0.92,
+        box: [[0, index * 20], [500, index * 20], [500, index * 20 + 20], [0, index * 20 + 20]]
+      }));
+
+      if (lines.length > 0) {
+        pagesData.push({ page: page.num || pagesData.length + 1, lines });
+      }
+    }
+
+    return pagesData;
+  } catch (err: any) {
+    console.warn(">>> [OCR FALLBACK] pdf-parse fallback failed:", err?.message || err);
+    return [];
+  }
+}
+
 export function performLayoutAnalysis(filePath: string): Promise<any> {
   const cachePath = path.join(LAYOUT_CACHE, `${getFileHash(filePath)}.json`);
   if (fs.existsSync(cachePath)) {
@@ -24,7 +69,7 @@ export function performLayoutAnalysis(filePath: string): Promise<any> {
   return new Promise((resolve, reject) => {
     console.log("Analyzing Layout...");
     exec(
-      `python server/pipeline/layout_segmenter.py "${filePath}"`,
+      `${getPythonCommand()} server/pipeline/layout_segmenter.py "${filePath}"`,
       { 
         maxBuffer: 1024 * 1024 * 5,
         env: { ...process.env, FLAGS_use_mkldnn: "0" }
@@ -64,7 +109,7 @@ export async function performOCR(filePath: string): Promise<any> {
   console.log(">>> [TEXT EXTRACTOR] Starting PyMuPDF extraction (no ML required)...");
   return new Promise((resolve, reject) => {
     exec(
-      `python text_extractor.py "${filePath}"`,
+      `${getPythonCommand()} text_extractor.py "${filePath}"`,
       { maxBuffer: 1024 * 1024 * 20 },
       async (error, stdout, stderr) => {
         if (error) {
@@ -83,6 +128,16 @@ export async function performOCR(filePath: string): Promise<any> {
               try {
                 const ext = path.extname(filePath).toLowerCase();
                 let imagePaths: string[] = [];
+
+                if (ext === '.pdf' || !ext) {
+                  console.log(">>> [OCR FALLBACK] Trying direct PDF text extraction via pdf-parse before image rendering...");
+                  const pdfTextPages = await extractPdfTextFallback(filePath);
+                  if (pdfTextPages.length > 0) {
+                    fs.writeFileSync(cachePath, JSON.stringify(pdfTextPages));
+                    console.log(`>>> [OCR FALLBACK SUCCESS] Extracted text via pdf-parse.`);
+                    return resolve(pdfTextPages);
+                  }
+                }
                 
                 // If it's a PDF without embedded text, convert pages to images
                 if (ext === '.pdf' || !ext) {
@@ -91,18 +146,18 @@ export async function performOCR(filePath: string): Promise<any> {
                   const scriptPath = path.join(process.cwd(), "pdf_to_images.py");
                   
                   await new Promise((res, rej) => {
-                    exec(`python "${scriptPath}" "${filePath}" "${outputDir}"`, (err, so, se) => {
-                      if (err) return rej(new Error("PDF to Image conversion failed"));
+                    exec(`${getPythonCommand()} "${scriptPath}" "${filePath}" "${outputDir}"`, (err, so, se) => {
+                      if (err) return rej(new Error(`PDF to Image conversion failed: ${se || err.message}`));
                       try {
                         const parsedRes = JSON.parse(so.trim());
                         if (parsedRes.success) {
                           imagePaths = parsedRes.images;
                           res(true);
                         } else {
-                          rej(new Error(parsedRes.error));
+                          rej(new Error(parsedRes.error || "PDF to Image conversion failed"));
                         }
                       } catch (e) {
-                        rej(new Error("Failed to parse image converter output"));
+                        rej(new Error(`Failed to parse image converter output: ${(e as any)?.message || e}`));
                       }
                     });
                   });
@@ -157,6 +212,7 @@ export async function performOCR(filePath: string): Promise<any> {
                 }
               } catch (tessErr) {
                 console.error(">>> [OCR FALLBACK ERROR] Tesseract failed:", tessErr);
+
                 return resolve([]); // Gracefully return empty data instead of crashing
               }
             } else {

@@ -10,7 +10,8 @@ export async function performCloudOCR(filePath: string) {
     console.log(">>> [CLOUD OCR] Requesting high-accuracy vision extraction...");
     console.log("    [TRAINING] Injecting Industrial Domain Knowledge into Vision Model...");
 
-    const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+    const OPENROUTER_URL = process.env.OPENROUTER_URL || "https://openrouter.ai/api/v1/chat/completions";
+    const response = await axios.post(OPENROUTER_URL, {
         model: "google/gemini-2.0-flash-exp:free",
         messages: [
             {

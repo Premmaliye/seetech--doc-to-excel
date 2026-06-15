@@ -1,6 +1,6 @@
 import axios from "axios";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_URL = process.env.OPENROUTER_URL || "https://openrouter.ai/api/v1/chat/completions";
 
 const MODELS = [
   "google/gemini-2.0-flash-exp:free",

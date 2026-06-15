@@ -1,10 +1,14 @@
-import { performGeminiExtraction } from "../services/geminiExtractor.js";
+import path from "path";
+import { performOCR } from "../services/ocrService.js";
+import { generateOpenRouterExtraction } from "../services/aiService.js";
 import { extractWithOpenRouter } from "../services/openRouterVision.js";
 
 // ─────────────────────────────────────────────
 // MAIN DOCUMENT PROCESSOR
-// Tries Gemini Vision first (if key set), falls back to OpenRouter vision models.
-// Converts grid[][] output to rows[] so the frontend Excel exporter works correctly.
+// Strategy:
+//   • Images (jpg/png/jpeg) → send directly to OpenRouter vision model (best accuracy)
+//   • PDFs with embedded text → local OCR (PyMuPDF) → OpenRouter text model
+//   • Scanned PDFs (no text) → convert to images → OpenRouter vision model
 // ─────────────────────────────────────────────
 
 /**
@@ -46,48 +50,97 @@ function gridToSheets(rawResult: any): any {
     };
 }
 
+function ocrPagesToRows(ocrPages: any[]): Record<string, any>[] {
+    const rows: Record<string, any>[] = [];
+    for (const page of ocrPages || []) {
+        for (const line of page?.lines || []) {
+            const text = (line?.text || "").trim();
+            if (!text) continue;
+            rows.push({
+                page: page?.page ?? null,
+                text,
+                confidence: line?.confidence ?? null
+            });
+        }
+    }
+    return rows;
+}
+
 export async function processDocument(filePath: string, customPrompt?: string) {
     console.log(">>> [PIPELINE] STARTING...");
 
+    const ext = path.extname(filePath).toLowerCase();
+    const isImage = [".jpg", ".jpeg", ".png", ".webp", ".bmp", ".tiff"].includes(ext);
+
     let finalResult: any = null;
 
-    // --- Attempt 1: Gemini Vision (if API key is configured) ---
-    const geminiKey = process.env.GEMINI_API_KEY?.trim();
-    if (geminiKey) {
+    // ── Strategy 1: Images go directly to vision model (most accurate) ──
+    if (isImage) {
         try {
-            console.log(">>> [PIPELINE] Trying Gemini Vision API...");
-            finalResult = await performGeminiExtraction(filePath, customPrompt);
-            console.log(">>> [PIPELINE] Gemini extraction succeeded.");
-        } catch (err: any) {
-            console.warn(">>> [PIPELINE] Gemini failed:", err.message, "— falling back to OpenRouter.");
-            finalResult = null;
-        }
-    } else {
-        console.log(">>> [PIPELINE] GEMINI_API_KEY not set. Skipping Gemini, using OpenRouter vision.");
-    }
-
-    // --- Attempt 2: OpenRouter Vision (uses OPENAI_API_KEY / OPENROUTER_API_KEY) ---
-    if (!finalResult || (!finalResult.sheets && !Array.isArray(finalResult))) {
-        try {
-            console.log(">>> [PIPELINE] Trying OpenRouter Vision...");
+            console.log(">>> [PIPELINE] Image detected — sending directly to OpenRouter vision...");
             finalResult = await extractWithOpenRouter(filePath, customPrompt);
-            console.log(">>> [PIPELINE] OpenRouter extraction succeeded.");
+            console.log(">>> [PIPELINE] Vision extraction succeeded.");
         } catch (err: any) {
-            console.error(">>> [PIPELINE] OpenRouter also failed:", err.message);
+            console.error(">>> [PIPELINE] Vision extraction failed:", err.message || err);
             finalResult = null;
         }
     }
 
-    // --- Fallback: Return error sheet ---
+    // ── Strategy 2: PDFs — try local OCR first, then vision fallback ──
+    if (!finalResult && !isImage) {
+        let ocrPages: any[] = [];
+
+        try {
+            console.log(">>> [PIPELINE] Running local OCR (PyMuPDF)...");
+            ocrPages = await performOCR(filePath);
+            console.log(`>>> [PIPELINE] OCR produced ${ocrPages.length} page(s).`);
+
+            if (ocrPages.length > 0) {
+                console.log(">>> [PIPELINE] Sending OCR text to OpenRouter owl-alpha...");
+                finalResult = await generateOpenRouterExtraction(ocrPages, customPrompt);
+                console.log(">>> [PIPELINE] OpenRouter text extraction succeeded.");
+            }
+        } catch (err: any) {
+            console.error(">>> [PIPELINE] OCR/text path failed:", err.message || err);
+        }
+
+        // If OCR path failed (scanned PDF with no text), try vision directly
+        if (!finalResult) {
+            try {
+                console.log(">>> [PIPELINE] Falling back to vision extraction for PDF...");
+                finalResult = await extractWithOpenRouter(filePath, customPrompt);
+                console.log(">>> [PIPELINE] Vision fallback succeeded.");
+            } catch (err: any) {
+                console.error(">>> [PIPELINE] Vision fallback also failed:", err.message || err);
+            }
+        }
+
+        // Last resort: return raw OCR text
+        if (!finalResult) {
+            const fallbackRows = ocrPagesToRows(ocrPages);
+            finalResult = {
+                detectedFormatId: "format-a",
+                sheets: [{
+                    name: fallbackRows.length > 0 ? "OCR_Extraction" : "Extraction_Failed",
+                    rows: fallbackRows.length > 0 ? fallbackRows : [{
+                        page: 1,
+                        text: "Extraction failed. Check API keys and network.",
+                        confidence: null
+                    }],
+                    formatId: "format-a"
+                }]
+            };
+        }
+    }
+
+    // ── If vision failed for images, return error ──
     if (!finalResult) {
         finalResult = {
             detectedFormatId: "format-a",
             sheets: [{
                 name: "Extraction_Failed",
-                grid: [
-                    ["Error"],
-                    ["Both Gemini and OpenRouter extraction failed. Check API keys and network."]
-                ]
+                rows: [{ page: 1, text: "Extraction failed. Check API key and network.", confidence: null }],
+                formatId: "format-a"
             }]
         };
     }
@@ -95,7 +148,7 @@ export async function processDocument(filePath: string, customPrompt?: string) {
     // Convert grid[][] → rows[] so the Excel exporter gets proper data
     finalResult = gridToSheets(finalResult);
 
-    // Handle legacy array-of-rows format from Gemini
+    // Handle legacy array-of-rows format
     if (Array.isArray(finalResult)) {
         finalResult = {
             detectedFormatId: "format-a",

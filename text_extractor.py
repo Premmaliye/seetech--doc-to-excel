@@ -9,7 +9,14 @@ import os
 
 def extract_text(file_path):
     try:
-        import fitz  # PyMuPDF
+        try:
+            import fitz  # PyMuPDF
+        except ModuleNotFoundError:
+            # Keep the pipeline moving when PyMuPDF is unavailable in this
+            # environment. The Node OCR service will treat this as a scanned
+            # document signal and fall back to Tesseract.js.
+            print(json.dumps({"error": "No text found in document."}))
+            return
 
         if not os.path.exists(file_path):
             print(json.dumps({"error": f"File not found: {file_path}"}))

@@ -1,19 +1,38 @@
 import sys
-import fitz
 import os
 import json
 
+def _open_pdf(pdf_path):
+    try:
+        import fitz  # PyMuPDF
+        return ("fitz", fitz.open(pdf_path))
+    except Exception:
+        try:
+            import pypdfium2 as pdfium
+            return ("pdfium", pdfium.PdfDocument(pdf_path))
+        except Exception as e:
+            raise RuntimeError(f"No PDF renderer available: {e}")
+
 def convert_pdf_to_images(pdf_path, output_dir):
     try:
-        doc = fitz.open(pdf_path)
+        backend, doc = _open_pdf(pdf_path)
         image_paths = []
         for i in range(len(doc)):
-            page = doc.load_page(i)
-            pix = page.get_pixmap(dpi=150) # 150 DPI is usually enough for OCR
             out_path = os.path.join(output_dir, f"page_{i}.png")
-            pix.save(out_path)
+            if backend == "fitz":
+                page = doc.load_page(i)
+                pix = page.get_pixmap(dpi=150)  # 150 DPI is usually enough for OCR
+                pix.save(out_path)
+            else:
+                page = doc.get_page(i)
+                bitmap = page.render(scale=2)
+                pil_image = bitmap.to_pil()
+                pil_image.save(out_path)
             image_paths.append(out_path)
-        doc.close()
+        try:
+            doc.close()
+        except Exception:
+            pass
         print(json.dumps({"success": True, "images": image_paths}))
     except Exception as e:
         print(json.dumps({"success": False, "error": str(e)}))

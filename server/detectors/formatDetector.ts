@@ -9,10 +9,10 @@
 
 import axios from "axios";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_URL = process.env.OPENROUTER_URL || "https://openrouter.ai/api/v1/chat/completions";
 
 // Use the fastest/cheapest model for detection — just needs to read headers
-const DETECTION_MODEL = "google/gemini-2.0-flash-lite-001";
+const DETECTION_MODEL = process.env.OPENROUTER_DETECTION_MODEL || "google/gemini-2.5-flash-lite";
 
 const DETECTION_PROMPT = `You are an industrial document classifier. Look at this document image and identify which format it belongs to.
 

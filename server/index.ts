@@ -8,6 +8,7 @@ import fs from "fs";
 import { generateAIResponse } from "./services/aiService.js";
 import { performOCR } from "./services/ocrService.js";
 import { processDocument } from "./pipeline/documentProcessor.js";
+import axios from "axios";
 import { createServer as createViteServer } from "vite";
 
 dotenv.config();
@@ -64,8 +65,22 @@ async function startServer() {
       if (!req.file) {
         return res.status(400).json({ error: "No file uploaded." });
       }
+
+      // Rename uploaded file to include proper extension (needed for format detection)
+      const originalExt = path.extname(req.file.originalname).toLowerCase() || 
+        (req.file.mimetype === "image/jpeg" ? ".jpg" : 
+         req.file.mimetype === "image/png" ? ".png" : 
+         req.file.mimetype === "application/pdf" ? ".pdf" : "");
+      
+      let filePath = req.file.path;
+      if (originalExt && !filePath.endsWith(originalExt)) {
+        const newPath = `${filePath}${originalExt}`;
+        fs.renameSync(filePath, newPath);
+        filePath = newPath;
+      }
+
       const customPrompt = req.body.prompt;
-      const result = await processDocument(req.file.path, customPrompt);
+      const result = await processDocument(filePath, customPrompt);
       
       let response;
       if (result && result.sheets) {
@@ -99,6 +114,31 @@ async function startServer() {
 
   app.get("/api/health", (req, res) => {
     res.json({ status: "ok", uptime: process.uptime() });
+  });
+
+  // Simple server-side test for OpenRouter connectivity using the running process env
+  app.get("/api/test-openrouter", async (req, res) => {
+    const apiKey = (process.env.OPENROUTER_API_KEY || process.env.OPENAI_API_KEY || "").trim();
+    if (!apiKey) return res.status(400).json({ error: "OPENROUTER_API_KEY not set in server env" });
+
+    const testModel = process.env.OPENROUTER_MODEL || "openrouter/owl-alpha";
+    try {
+      const response = await axios.post("https://openrouter.ai/api/v1/chat/completions", {
+        model: testModel,
+        messages: [{ role: "user", content: "Ping from server" }],
+        temperature: 0.0,
+        max_tokens: 20
+      }, {
+        headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
+        timeout: 20000
+      });
+
+      return res.json({ ok: true, model: testModel, data: response.data });
+    } catch (err: any) {
+      const status = err.response?.status || null;
+      const body = err.response?.data || err.message;
+      return res.status(status || 500).json({ ok: false, status, body: body });
+    }
   });
 
   // --- VITE / STATIC SERVING ---

@@ -18,11 +18,11 @@ import { FORMAT_B_PROMPT, FORMAT_B_HEADERS } from "./formatBExtractor.js";
 import { FORMAT_C_PROMPT, FORMAT_C_HEADERS } from "./formatCExtractor.js";
 import { FORMAT_D_PROMPT, FORMAT_D_HEADERS } from "./formatDExtractor.js";
 
-const OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions";
+const OPENROUTER_URL = process.env.OPENROUTER_URL || "https://openrouter.ai/api/v1/chat/completions";
 
-// Primary extraction model — best accuracy
-const EXTRACTION_MODEL_PRIMARY = "google/gemini-2.5-flash";
-const EXTRACTION_MODEL_FALLBACK = "google/gemini-2.0-flash-001";
+// Primary extraction model — must support vision/image input
+const EXTRACTION_MODEL_PRIMARY = process.env.OPENROUTER_VISION_MODEL || "google/gemini-2.5-flash";
+const EXTRACTION_MODEL_FALLBACK = process.env.OPENROUTER_MODEL_FALLBACK || "google/gemini-2.5-flash";
 
 /** Map formatId → its isolated extraction prompt */
 function getExtractionPrompt(formatId: FormatId): string {
@@ -54,26 +54,34 @@ async function callVisionModel(
   prompt: string,
   apiKey: string
 ): Promise<any> {
-  const response = await axios.post(OPENROUTER_URL, {
-    model,
-    messages: [{
-      role: "user",
-      content: [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } }
-      ]
-    }],
-    temperature: 0.1,
-    max_tokens: 8192
-  }, {
-    headers: {
-      "Authorization": `Bearer ${apiKey}`,
-      "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
-      "X-Title": "DocuStruct AI Extractor",
-      "Content-Type": "application/json"
-    },
-    timeout: 120000
-  });
+  let response;
+  try {
+    response = await axios.post(OPENROUTER_URL, {
+      model,
+      messages: [{
+        role: "user",
+        content: [
+          { type: "text", text: prompt },
+          { type: "image_url", image_url: { url: `data:${mimeType};base64,${base64}` } }
+        ]
+      }],
+      temperature: 0.1,
+      max_tokens: 8192
+    }, {
+      headers: {
+        "Authorization": `Bearer ${apiKey}`,
+        "HTTP-Referer": process.env.APP_URL || "http://localhost:3000",
+        "X-Title": "DocuStruct AI Extractor",
+        "Content-Type": "application/json"
+      },
+      timeout: 120000
+    });
+  } catch (err: any) {
+    const status = err.response?.status || null;
+    const body = err.response?.data || err.message;
+    const bodyStr = typeof body === 'string' ? body : JSON.stringify(body);
+    throw new Error(`OpenRouter request failed (status=${status}): ${bodyStr}`);
+  }
 
   const rawContent: string = response.data?.choices?.[0]?.message?.content || "";
   if (!rawContent) throw new Error(`Model ${model} returned empty content`);
